@@ -3,6 +3,7 @@ package fr.tp.inf112.projects.robotsim.model;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.ListIterator;
 
 import fr.tp.inf112.projects.canvas.model.Style;
 import fr.tp.inf112.projects.canvas.model.impl.RGBColor;
@@ -30,11 +31,13 @@ public class Robot extends Component {
 	
 	private Component currTargetComponent;
 	
-	private transient Iterator<Position> currentPathPositionsIter;
+	private transient ListIterator<Position> currentPathPositionsIter;
 	
 	private transient boolean blocked;
 	
 	private Position blockedTargetPosition;
+	
+	private Position lastPosition = new Position(-1,-1);
 	
 	private FactoryPathFinder pathFinder;
 
@@ -121,16 +124,31 @@ public class Robot extends Component {
 	private int moveToNextPathPosition() {
 		final Motion motion = computeMotion();
 		
-		final int displacement = motion == null ? 0 : motion.moveToTarget();
-			
-		notifyObservers();
+		int displacement = motion == null ? 0 : motion.moveToTarget();
+		
+		if (displacement != 0) {
+			 notifyObservers();
+		} else if (isLivelyLocked()) {
+			final Position freeNeighbouringPosition = findFreeNeighbouringPosition();
+		 	if (freeNeighbouringPosition != null) {
+		 		currentPathPositionsIter.add(freeNeighbouringPosition);		 		
+		 		displacement = moveToNextPathPosition();
+		 		computePathToCurrentTargetComponent();
+		 	}
+		}
 		
 		return displacement;
 	}
 	
+	private Position findFreeNeighbouringPosition() {
+		// for a robot find a free position to let the live lock pass.
+		this.blockedTargetPosition = null;
+		return lastPosition;
+	}
+
 	private void computePathToCurrentTargetComponent() {
 		final List<Position> currentPathPositions = pathFinder.findPath(this, currTargetComponent);
-		currentPathPositionsIter = currentPathPositions.iterator();
+		currentPathPositionsIter = currentPathPositions.listIterator();
 	}
 	
 	private Motion computeMotion() {
@@ -159,7 +177,7 @@ public class Robot extends Component {
 		// Reset the memorized position
 		this.blockedTargetPosition = null;
 			
-		return new Motion(getPosition(), targetPosition);
+		return new Motion(getPosition(), targetPosition, lastPosition);
 	}
 	
 	private Position getTargetPosition() {
