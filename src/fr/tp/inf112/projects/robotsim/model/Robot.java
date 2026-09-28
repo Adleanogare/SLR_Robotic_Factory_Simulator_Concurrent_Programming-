@@ -3,7 +3,6 @@ package fr.tp.inf112.projects.robotsim.model;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import java.util.ListIterator;
 
 import fr.tp.inf112.projects.canvas.model.Style;
 import fr.tp.inf112.projects.canvas.model.impl.RGBColor;
@@ -31,13 +30,11 @@ public class Robot extends Component {
 	
 	private Component currTargetComponent;
 	
-	private transient ListIterator<Position> currentPathPositionsIter;
+	private transient Iterator<Position> currentPathPositionsIter;
 	
 	private transient boolean blocked;
 	
 	private Position blockedTargetPosition;
-	
-	private Position lastPosition = new Position(-1,-1);
 	
 	private FactoryPathFinder pathFinder;
 
@@ -127,11 +124,11 @@ public class Robot extends Component {
 		int displacement = motion == null ? 0 : motion.moveToTarget();
 		
 		if (displacement != 0) {
-			 notifyObservers();
+			notifyObservers();
 		} else if (isLivelyLocked()) {
 			final Position freeNeighbouringPosition = findFreeNeighbouringPosition();
 		 	if (freeNeighbouringPosition != null) {
-		 		currentPathPositionsIter.add(freeNeighbouringPosition);		 		
+		 		blockedTargetPosition = freeNeighbouringPosition;
 		 		displacement = moveToNextPathPosition();
 		 		computePathToCurrentTargetComponent();
 		 	}
@@ -141,14 +138,63 @@ public class Robot extends Component {
 	}
 	
 	private Position findFreeNeighbouringPosition() {
-		// for a robot find a free position to let the live lock pass.
-		this.blockedTargetPosition = null;
-		return lastPosition;
+		// For a robot find a free position to let the live lock pass.
+		// If robots are in a deadlock position, they have three position to choose from in the best case scenario.
+		// We compute each of them in the same order related to the other robots and constraint then choose the first one possible.
+		// y goes down
+		// x goes left
+		
+		ArrayList<Position> list_FNP = new ArrayList<Position>();
+		
+		//In the form of
+		final int posX = getPosition().getxCoordinate();
+		final int posY = getPosition().getyCoordinate();
+		final int deltaX = posX - blockedTargetPosition.getxCoordinate();
+		final int deltaY = posY - blockedTargetPosition.getyCoordinate();
+
+		//Start with trying to go around
+		if(deltaX != 0) {
+			final PositionedShape shape1 = new RectangularShape(posX,posY + deltaX,2,2);
+			if (!getFactory().hasObstacleAt(shape1)) {
+				list_FNP.add(new Position(posX,posY + deltaX));
+			}
+			
+			final PositionedShape shape2 = new RectangularShape(posX,posY - deltaX,2,2);
+			if (!getFactory().hasObstacleAt(shape2)) {
+				list_FNP.add(new Position(posX,posY - deltaX));
+			}
+			
+			final PositionedShape shape3 = new RectangularShape(posX + deltaX,posY,2,2);
+			if (!getFactory().hasObstacleAt(shape3)) {
+				list_FNP.add(new Position(posX+deltaX,posY));
+			}
+			//There is no use in trying to go forward
+		} else {
+			final PositionedShape shape3 = new RectangularShape(posX + deltaY,posY,2,2);
+			if (!getFactory().hasObstacleAt(shape3)) {
+				list_FNP.add(new Position(posX+deltaY,posY));
+			}
+			
+			final PositionedShape shape2 = new RectangularShape(posX - deltaY,posY,2,2);
+			if (!getFactory().hasObstacleAt(shape2)) {
+				list_FNP.add(new Position(posX-deltaY,posY));
+			}
+			
+			final PositionedShape shape1 = new RectangularShape(posX,posY + deltaY,2,2);
+			if (!getFactory().hasObstacleAt(shape1)) {
+				list_FNP.add(new Position(posX,posY + deltaY));
+			}
+			//There is no use in trying to go forward
+		}
+		
+		//list_FNP.add(null);
+		
+		return list_FNP.get(0);
 	}
 
 	private void computePathToCurrentTargetComponent() {
 		final List<Position> currentPathPositions = pathFinder.findPath(this, currTargetComponent);
-		currentPathPositionsIter = currentPathPositions.listIterator();
+		currentPathPositionsIter = currentPathPositions.iterator();
 	}
 	
 	private Motion computeMotion() {
@@ -177,7 +223,7 @@ public class Robot extends Component {
 		// Reset the memorized position
 		this.blockedTargetPosition = null;
 			
-		return new Motion(getPosition(), targetPosition, lastPosition);
+		return new Motion(getPosition(), targetPosition);
 	}
 	
 	private Position getTargetPosition() {
