@@ -136,4 +136,21 @@ public abstract class Component implements Figure, Serializable, Runnable {
 	public boolean isSimulationStarted() {
 		return getFactory().isSimulationStarted();
 	}
+	
+	public void run() {
+		
+		getFactory().startSimulation();
+		
+		while(isSimulationStarted()){
+			behave();
+			
+			try {
+				Thread.sleep(50);
+			}
+			catch (final InterruptedException ex) {
+				System.err.println("Simulation was abruptly interrupted");
+			}
+		}
+		
+	}
 }
