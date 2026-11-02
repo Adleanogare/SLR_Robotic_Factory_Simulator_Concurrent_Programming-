@@ -3,6 +3,7 @@ package fr.tp.inf112.projects.robotsim.model;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.concurrent.locks.Lock;
 
 import fr.tp.inf112.projects.canvas.model.Style;
 import fr.tp.inf112.projects.canvas.model.impl.RGBColor;
@@ -121,8 +122,17 @@ public class Robot extends Component {
 	private int moveToNextPathPosition() {
 		final Motion motion = computeMotion();
 		
-		int displacement = motion == null ? 0 : motion.moveToTarget();
-		
+		int displacement = 0;
+		if (motion != null) {
+			final Lock movingLock = getFactory().getFactoryGrid().get(motion.getTargetPosition().getxCoordinate()).get(motion.getTargetPosition().getyCoordinate());
+			movingLock.lock();
+			
+			displacement = motion.moveToTarget();
+			
+			movingLock.unlock();
+			movingLock.unlock();
+		}
+				
 		if (displacement != 0) {
 			notifyObservers();
 		} else if (isLivelyLocked()) {
@@ -206,17 +216,19 @@ public class Robot extends Component {
 			return null;
 		}
 		
-		
 		final Position targetPosition = getTargetPosition();
 		final PositionedShape shape = new RectangularShape(targetPosition.getxCoordinate(),
 														   targetPosition.getyCoordinate(),
 				   										   2,
 				   										   2);
 		
+		final Lock movingLock = getFactory().getFactoryGrid().get(targetPosition.getxCoordinate()).get(targetPosition.getyCoordinate());
+		movingLock.lock();
+		
 		// If there is another robot, memorize the blocked target position for the next run
 		if (getFactory().hasMobileComponentAt(shape, this)) {
 			this.blockedTargetPosition = targetPosition;
-			
+			movingLock.unlock();
 			return null;
 		}
 

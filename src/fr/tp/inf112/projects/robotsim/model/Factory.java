@@ -3,6 +3,8 @@ package fr.tp.inf112.projects.robotsim.model;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import fr.tp.inf112.projects.canvas.controller.Observable;
 import fr.tp.inf112.projects.canvas.controller.Observer;
@@ -26,6 +28,8 @@ public class Factory extends Component implements Canvas, Observable {
 	
 	private int pathResolution;
 
+	public List<List<Lock>> factoryGrid;
+	
 	public Factory(final int width,
 				   final int height,
 				   final String name,
@@ -33,9 +37,23 @@ public class Factory extends Component implements Canvas, Observable {
 		super(null, new RectangularShape(0, 0, width, height), name);
 		
 		this.pathResolution = pathResolution;
+		
+		factoryGrid = new ArrayList<>();
+		
+		for (int i = 0; i < height; i++) {
+			factoryGrid.add(new ArrayList<>());
+			for (int j = 0; j < width; j++) {
+			    factoryGrid.get(i).add(new ReentrantLock());
+			}
+		}		
+		
 		components = new ArrayList<>();
 		observers = null;
 		simulationStarted = false;
+	}
+	
+	public List<List<Lock>> getFactoryGrid() {
+		return factoryGrid;
 	}
 	
 	protected List<Observer> getObservers() {
