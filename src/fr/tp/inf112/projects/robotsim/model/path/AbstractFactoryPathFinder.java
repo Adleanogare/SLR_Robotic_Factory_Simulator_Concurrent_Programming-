@@ -4,13 +4,18 @@ import java.io.Serializable;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
+import fr.tp.inf112.projects.robotsim.app.SimulatorApplication;
 import fr.tp.inf112.projects.robotsim.model.Factory;
 import fr.tp.inf112.projects.robotsim.model.Position;
 import fr.tp.inf112.projects.robotsim.model.shapes.PositionedShape;
 import fr.tp.inf112.projects.robotsim.model.shapes.RectangularShape;
 
 public abstract class AbstractFactoryPathFinder<Graph, Vertex> implements FactoryPathFinder, Serializable {
+
+	private static final Logger LOGGER = Logger.getLogger(SimulatorApplication.class.getName());
 
 	/**
 	 * 
@@ -67,7 +72,8 @@ public abstract class AbstractFactoryPathFinder<Graph, Vertex> implements Factor
 				}
 			}
 			
-			System.out.println(graph.toString());
+			//System.out.println(graph.toString());
+			LOGGER.log(Level.FINE, graph.toString());
 		}
 	}
 	
