@@ -70,7 +70,7 @@ public class SimulatorPersistenceServer {
             
         }
         catch (IOException ex) {
-        	System.out.println("Erreur request serveur");
+        	System.out.println("Error request server");
         	System.out.println(ex);
         }
     }
