@@ -22,27 +22,28 @@ public class SimulatorPersistenceClient {
 		try { 
             InetAddress netAddr = InetAddress.getByName("127.0.0.1");
             try {
-                System.out.println("TryInet");
+        		LOGGER.fine("TryInet");
                 SocketAddress sockAddr = new InetSocketAddress(netAddr, 64000);
-                System.out.println("TrySocket");
+                LOGGER.fine("TrySocket");
                 Socket socket = new Socket();
                 socket.connect(sockAddr, 1000); // Timeout of 1000 ms
-                System.out.println("Processor");
+                LOGGER.fine("RunClient");
                 new Thread(() -> runClient(socket)).start();
             }
             catch (IOException ex) {
-                System.out.println("Erreur");
-                System.out.println(ex);
+            	LOGGER.severe("Error");
+                LOGGER.severe(ex.toString());
             }
         }
         catch (IOException ex) {
-            System.out.println("Erreur connection");
+        	LOGGER.severe("Connection Error");
+            LOGGER.severe(ex.toString());
         }
     }
 
 	public static void runClient(Socket socket) {
         try {
-            System.out.println(socket.getRemoteSocketAddress().toString());
+        	LOGGER.fine(socket.getRemoteSocketAddress().toString());
             InputStream inpStr = socket.getInputStream();
             Reader strReader = new InputStreamReader(inpStr);
             BufferedReader buffReader = new BufferedReader(strReader);
@@ -53,15 +54,15 @@ public class SimulatorPersistenceClient {
             // - build and write response
             String s = null;
             writer.println("I send HelloWorld!");
-            System.out.println("I send HelloWorld!");
+            LOGGER.fine("I send HelloWorld!");
             while ((s=buffReader.readLine())!=null) {
-                System.out.println("I received back : " + s + " !");
+                LOGGER.fine("I received back : " + s + " !");
             }
             
         }
         catch (IOException ex) {
-        	System.out.println("Error request client");
-        	System.out.println(ex);
+        	LOGGER.severe("Client error");
+            LOGGER.severe(ex.toString());
         }
     }
 }
