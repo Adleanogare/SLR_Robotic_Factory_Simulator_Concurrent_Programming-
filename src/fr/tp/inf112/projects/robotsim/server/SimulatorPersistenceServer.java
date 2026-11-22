@@ -3,9 +3,11 @@ package fr.tp.inf112.projects.robotsim.server;
 import java.util.Arrays;
 import java.util.logging.Logger;
 import java.net.*;
+import java.nio.file.Paths;
 import java.io.*;
 import fr.tp.inf112.projects.robotsim.model.Factory;
 import fr.tp.inf112.projects.robotsim.model.FactoryPersistenceManager;
+import javax.swing.filechooser.FileNameExtensionFilter;
 
 public class SimulatorPersistenceServer {
 	
@@ -75,7 +77,11 @@ public class SimulatorPersistenceServer {
             		} else if (o instanceof Factory) {
             			fpm.persist((Factory) o);
             			LOGGER.fine("I received : a Factory !!!");
-            		}	
+            		} else if (o instanceof FileNameExtensionFilter) {
+            			java.io.FileFilter ioFilter = file -> ((FileNameExtensionFilter) o).accept(file);
+            		    File file = new File(Paths.get("").toString());
+            			out.writeObject(file.listFiles(ioFilter));
+            		}
             	}
             	catch (IOException | ClassNotFoundException ex) {out.writeObject("I received : " + s + " !");
             		LOGGER.severe("Error request server");
