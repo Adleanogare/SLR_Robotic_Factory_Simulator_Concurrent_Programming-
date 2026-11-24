@@ -5,15 +5,17 @@ import java.util.logging.Logger;
 import java.net.*;
 import java.nio.file.Paths;
 import java.io.*;
-import fr.tp.inf112.projects.robotsim.model.Factory;
+
+import fr.tp.inf112.projects.canvas.model.Canvas;
+import fr.tp.inf112.projects.canvas.view.FileCanvasChooser;
 import fr.tp.inf112.projects.robotsim.model.FactoryPersistenceManager;
 import javax.swing.filechooser.FileNameExtensionFilter;
 
 public class SimulatorPersistenceServer {
 	
 	private static final Logger LOGGER = Logger.getLogger(SimulatorPersistenceServer.class.getName());
-	
-	private static final FactoryPersistenceManager fpm = new FactoryPersistenceManager(null);
+	private static final FileCanvasChooser canvasChooser = new FileCanvasChooser("factory", "Puck Factory1");
+	private static final FactoryPersistenceManager fpm = new FactoryPersistenceManager(canvasChooser);
 	
 	public static Logger getLogger() {
 		return LOGGER;
@@ -29,11 +31,11 @@ public class SimulatorPersistenceServer {
                 ServerSocket serverSocket = new ServerSocket(64000, 50, specificAddr);
             ) { do {
                 try {
-                    LOGGER.fine(String.format("Client connected: %s%n", serverSocket.getInetAddress()));
+                    LOGGER.info(String.format("Server connected: %s%n", serverSocket.getInetAddress()));
                     while(true) {
-                    	LOGGER.fine("Waiting for a connexion...");
+                    	LOGGER.info("Waiting for a connexion...");
                         Socket socket = serverSocket.accept();
-                        LOGGER.fine(String.format("Client connected: %s%n", socket.getRemoteSocketAddress()));
+                        LOGGER.info(String.format("Client connected: %s%n", socket.getRemoteSocketAddress()));
                         new Thread(() -> runWebserver(socket)).start();
                     }
                 }
@@ -54,44 +56,63 @@ public class SimulatorPersistenceServer {
     }
 
 	public static void runWebserver(Socket socket) {
-        try {
-            LOGGER.fine(socket.getRemoteSocketAddress().toString());
+		LOGGER.info(socket.getRemoteSocketAddress().toString());
+		if (socket.isInputShutdown()) {
+			LOGGER.severe("Input Server shutdown");
+		}
+		if (socket.isOutputShutdown()) {
+			LOGGER.severe("Output Server shutdown");
+		}
+        try (
             InputStream inpStr = socket.getInputStream();
             BufferedInputStream bfin = new BufferedInputStream(inpStr);
             ObjectInputStream in = new ObjectInputStream(bfin);
-
             // - read and decode input request
             OutputStream outStr = socket.getOutputStream();
             BufferedOutputStream bfout = new BufferedOutputStream(outStr);
             ObjectOutputStream out = new ObjectOutputStream(bfout);
             // - build and write response
-            String s = null;
-            LOGGER.fine("Waiting for a message");
-            while(true) {
-            	try {
-            		Object o = in.readObject();
-            		if (o instanceof String) {
-            			fpm.read(o.toString());
-            			out.writeObject("I received : " + o.toString() + " !");
-            			LOGGER.fine("I received : " + o.toString() + " !");
-            		} else if (o instanceof Factory) {
-            			fpm.persist((Factory) o);
-            			LOGGER.fine("I received : a Factory !!!");
-            		} else if (o instanceof FileNameExtensionFilter) {
-            			java.io.FileFilter ioFilter = file -> ((FileNameExtensionFilter) o).accept(file);
-            		    File file = new File(Paths.get("").toString());
-            			out.writeObject(file.listFiles(ioFilter));
-            		}
-            	}
-            	catch (IOException | ClassNotFoundException ex) {out.writeObject("I received : " + s + " !");
-            		LOGGER.severe("Error request server");
-                	LOGGER.severe(ex.toString());
-            	}
-            }
+        	) /*while(true) {*/ {
+        		LOGGER.info("Waiting for a message");
+        		//LOGGER.info("Will read !!!");
+        		Object o = in.readObject();
+        		//LOGGER.info("Received object successfully !!!");
+        		if (o instanceof String) {
+        			LOGGER.info("I received : " + o.toString() + " !");
+        			fpm.read(o.toString());
+        			//out.writeObject("I received : " + o.toString() + " !");
+        		} else if (o instanceof Canvas) {
+        			LOGGER.info("I received : a Canvas !!!");
+        			fpm.persist((Canvas) o);
+        			LOGGER.info("Canvas was saved successfully !!!");
+        		} else if (o instanceof FilenameFilter) {
+        			LOGGER.info("I received : a file extension !!!");
+        		    File file = new File(Paths.get(".").toString());
+        			out.writeObject(file.list((FilenameFilter) o));
+        		} else {
+        			LOGGER.severe("No class found");
+        		}            		
         }
-        catch (IOException ex) {
-        	LOGGER.severe("Error request server");
+    	catch (EOFException ex) {
+    		LOGGER.severe("EOF exception");
+    		LOGGER.severe(ex.toString());
+    	}
+    	catch (IOException ex) {
+    		LOGGER.severe("Error request server : writing object ");
         	LOGGER.severe(ex.toString());
-        }
+    	}
+    	catch (ClassNotFoundException ex) {
+    		LOGGER.severe("Error request server : class not found");
+        	LOGGER.severe(ex.toString());
+    	}
+    	/*finally {
+    		try {
+				Thread.sleep(1000);
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				LOGGER.severe("Issue while sleeping");
+			}
+    	} //}
+    	*/
     }
 }

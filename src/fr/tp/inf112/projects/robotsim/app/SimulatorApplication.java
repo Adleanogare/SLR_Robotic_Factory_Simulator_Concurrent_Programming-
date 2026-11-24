@@ -1,6 +1,10 @@
 package fr.tp.inf112.projects.robotsim.app;
 
 import java.awt.Component;
+import java.io.IOException;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.util.Arrays;
 import java.util.logging.Logger;
 
@@ -8,14 +12,16 @@ import javax.swing.SwingUtilities;
 
 import fr.tp.inf112.projects.canvas.model.impl.BasicPoint;
 import fr.tp.inf112.projects.canvas.view.CanvasViewer;
-import fr.tp.inf112.projects.canvas.view.FileCanvasChooser;
+//import fr.tp.inf112.projects.canvas.view.FileCanvasChooser;
+import fr.tp.inf112.projects.robotsim.server.RemoteFileCanvasChooser;
 import fr.tp.inf112.projects.robotsim.model.Area;
 import fr.tp.inf112.projects.robotsim.model.Battery;
 import fr.tp.inf112.projects.robotsim.model.ChargingStation;
 import fr.tp.inf112.projects.robotsim.model.Conveyor;
 import fr.tp.inf112.projects.robotsim.model.Door;
 import fr.tp.inf112.projects.robotsim.model.Factory;
-import fr.tp.inf112.projects.robotsim.model.FactoryPersistenceManager;
+//import fr.tp.inf112.projects.robotsim.model.FactoryPersistenceManager;
+import fr.tp.inf112.projects.robotsim.server.RemoteFactoryPersistenceManager;
 import fr.tp.inf112.projects.robotsim.model.Machine;
 import fr.tp.inf112.projects.robotsim.model.Robot;
 import fr.tp.inf112.projects.robotsim.model.Room;
@@ -25,6 +31,7 @@ import fr.tp.inf112.projects.robotsim.model.path.JGraphTDijkstraFactoryPathFinde
 import fr.tp.inf112.projects.robotsim.model.shapes.BasicPolygonShape;
 import fr.tp.inf112.projects.robotsim.model.shapes.CircularShape;
 import fr.tp.inf112.projects.robotsim.model.shapes.RectangularShape;
+
 
 public class SimulatorApplication {
 	
@@ -89,11 +96,39 @@ public class SimulatorApplication {
 			  
 			@Override
 	        public void run() {
-				final FileCanvasChooser canvasChooser = new FileCanvasChooser("factory", "Puck Factory");
-				final Component factoryViewer = new CanvasViewer(new SimulatorController(factory, new FactoryPersistenceManager(canvasChooser)));
-				canvasChooser.setViewer(factoryViewer);
+				//final FileCanvasChooser canvasChooser = new FileCanvasChooser("factory", "Puck Factory");
+				//final Component factoryViewer = new CanvasViewer(new SimulatorController(factory, new FactoryPersistenceManager(canvasChooser)));
+				//canvasChooser.setViewer(factoryViewer);
+				try { 
+		            InetAddress netAddr = InetAddress.getByName("127.0.0.1");
+		            //try {
+		        		LOGGER.fine("TryInet");
+		                SocketAddress serverSocketAddr = new InetSocketAddress(netAddr, 64000);
+		                //LOGGER.fine("TrySocket");
+		                //Socket serverSocket = new Socket();
+		                //serverSocket.connect(sockAddr, 1000); // Timeout of 1000 ms
+		                //LOGGER.fine("RunClient");
+		                new Thread(() -> runClient(serverSocketAddr, factory)).start();
+		            //}
+		            //catch (IOException ex) {
+		            	//LOGGER.severe("Connection Error to the socket");
+		                //LOGGER.severe(ex.toString());
+		            //}
+		        }
+		        catch (IOException ex) {
+		        	LOGGER.severe("Connection Error to the inet");
+		            LOGGER.severe(ex.toString());
+		        }
+				
 				//new CanvasViewer(factory);
 			}
 		});
 	}
+	
+	public static void runClient(SocketAddress serverSocketAddr, Factory factory) {
+        LOGGER.fine(serverSocketAddr.toString());
+       	final RemoteFileCanvasChooser canvasChooser = new RemoteFileCanvasChooser("factory", "Puck Factory", serverSocketAddr);
+		final Component factoryViewer = new CanvasViewer(new SimulatorController(factory, new RemoteFactoryPersistenceManager(canvasChooser)));
+		canvasChooser.setViewer(factoryViewer);
+    }
 }

@@ -10,12 +10,16 @@ import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.OutputStream;
+import java.util.logging.Logger;
 
 import fr.tp.inf112.projects.canvas.model.Canvas;
 import fr.tp.inf112.projects.canvas.model.CanvasChooser;
 import fr.tp.inf112.projects.canvas.model.impl.AbstractCanvasPersistenceManager;
+import fr.tp.inf112.projects.robotsim.server.SimulatorPersistenceServer;
 
 public class FactoryPersistenceManager extends AbstractCanvasPersistenceManager {
+	
+	private static final Logger LOGGER = SimulatorPersistenceServer.getLogger();
 	
 	public FactoryPersistenceManager(final CanvasChooser canvasChooser) {
 		super(canvasChooser);
@@ -52,6 +56,7 @@ public class FactoryPersistenceManager extends AbstractCanvasPersistenceManager 
 			final ObjectOutputStream objOutStream = new ObjectOutputStream(bufOutStream);
 		) {	
 			objOutStream.writeObject(canvasModel);
+			LOGGER.info("Didn't fail writing the canvas model");
 		}
 	}
 

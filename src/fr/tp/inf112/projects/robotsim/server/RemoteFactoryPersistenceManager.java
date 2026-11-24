@@ -1,50 +1,47 @@
 package fr.tp.inf112.projects.robotsim.server;
 
-import java.util.logging.Logger;
 
 import java.net.*;
+import java.util.logging.Logger;
 import java.io.*;
 import fr.tp.inf112.projects.canvas.model.Canvas;
-import fr.tp.inf112.projects.canvas.model.CanvasChooser;
 import fr.tp.inf112.projects.canvas.model.impl.AbstractCanvasPersistenceManager;
+import fr.tp.inf112.projects.robotsim.app.SimulatorApplication;
+
 
 public class RemoteFactoryPersistenceManager extends AbstractCanvasPersistenceManager {
 	
-	private final Socket serverSocket;
+	private final SocketAddress serverSocketAddr;
 	
-	public RemoteFactoryPersistenceManager(final CanvasChooser canvasChooser) {
+	final Logger LOGGER = SimulatorApplication.getLogger();
+		
+	public RemoteFactoryPersistenceManager(final RemoteFileCanvasChooser canvasChooser) {
 		super(canvasChooser);
-		serverSocket = null;
+		serverSocketAddr = canvasChooser.getSocketAddr();
 	}
 	
-	public RemoteFactoryPersistenceManager(final CanvasChooser canvasChooser, final Socket socket) {
-		super(canvasChooser);
-		serverSocket = socket;
-	}
-	
-	private static final Logger LOGGER = Logger.getLogger(RemoteFactoryPersistenceManager.class.getName());
-	
-	public static Logger getLogger() {
-		return LOGGER;
-	}
-	
-
 	/**
 	 * {@inheritDoc}
 	 */
 	@Override
 	public Canvas read(final String canvasId)
 	throws IOException {
-		try (
-	        final InputStream inpStr = serverSocket.getInputStream();
-			final BufferedInputStream bfin = new BufferedInputStream(inpStr);
-			final ObjectInputStream in = new ObjectInputStream(bfin);
-			//final InputStream fileInputStream = new FileInputStream(canvasId);
-		) {
-			return (Canvas) in.readObject();
-		}
-		catch (ClassNotFoundException | IOException ex) {
-			throw new IOException(ex);
+		try (Socket serverSocket = new Socket();) {
+			serverSocket.connect(serverSocketAddr, 1000);
+			LOGGER.info("RFPM - read - socket connected");
+			try (
+		        final InputStream inpStr = serverSocket.getInputStream();
+				final BufferedInputStream bfin = new BufferedInputStream(inpStr);
+				final ObjectInputStream in = new ObjectInputStream(bfin);
+				//final InputStream fileInputStream = new FileInputStream(canvasId);
+			) {
+				LOGGER.info("RFPM - read - stream connected");
+				return (Canvas) in.readObject();
+			}
+			catch (ClassNotFoundException | IOException ex) {
+				LOGGER.info("RFPM - read - failS");
+				throw new IOException(ex);
+			}
 		}
 	}
 
@@ -54,13 +51,18 @@ public class RemoteFactoryPersistenceManager extends AbstractCanvasPersistenceMa
 	@Override
 	public void persist(Canvas canvasModel)
 	throws IOException {
-		try (
-	        final OutputStream outStr = serverSocket.getOutputStream();
-	        final BufferedOutputStream bfout = new BufferedOutputStream(outStr);
-	        final ObjectOutputStream out = new ObjectOutputStream(bfout);	
-			//final OutputStream fileOutStream = new FileOutputStream(canvasModel.getId());
-		) {	
-			out.writeObject(canvasModel);
+		try (Socket serverSocket = new Socket();) {
+			serverSocket.connect(serverSocketAddr, 1000);
+			LOGGER.info("RFPM - persist - socket connected");
+			try (
+				final OutputStream outStr = serverSocket.getOutputStream();
+			    final BufferedOutputStream bfout = new BufferedOutputStream(outStr);
+			    final ObjectOutputStream out = new ObjectOutputStream(bfout);	
+				) {	
+				//final OutputStream fileOutStream = new FileOutputStream(canvasModel.getId());
+				out.writeObject(canvasModel);
+				LOGGER.info("RFPM - persist - object written in stream");
+			} 
 		}
 	}
 
