@@ -1,7 +1,6 @@
 package fr.tp.inf112.projects.robotsim.server;
 
 
-import javax.swing.filechooser.FileNameExtensionFilter;
 import java.io.*;
 import java.net.*;
 import java.util.logging.Logger;

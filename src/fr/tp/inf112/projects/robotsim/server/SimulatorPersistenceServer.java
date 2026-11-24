@@ -9,7 +9,6 @@ import java.io.*;
 import fr.tp.inf112.projects.canvas.model.Canvas;
 import fr.tp.inf112.projects.canvas.view.FileCanvasChooser;
 import fr.tp.inf112.projects.robotsim.model.FactoryPersistenceManager;
-import javax.swing.filechooser.FileNameExtensionFilter;
 
 public class SimulatorPersistenceServer {
 	
