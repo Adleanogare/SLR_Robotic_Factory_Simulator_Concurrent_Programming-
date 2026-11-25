@@ -1,9 +1,9 @@
 package fr.tp.inf112.projects.robotsim.server;
 
 import java.util.Arrays;
+import java.util.function.Function;
 import java.util.logging.Logger;
 import java.net.*;
-import java.nio.file.Paths;
 import java.io.*;
 
 import fr.tp.inf112.projects.canvas.model.Canvas;
@@ -13,7 +13,9 @@ import fr.tp.inf112.projects.robotsim.model.FactoryPersistenceManager;
 public class SimulatorPersistenceServer {
 	
 	private static final Logger LOGGER = Logger.getLogger(SimulatorPersistenceServer.class.getName());
+	
 	private static final FileCanvasChooser canvasChooser = new FileCanvasChooser("factory", "Puck Factory1");
+	
 	private static final FactoryPersistenceManager fpm = new FactoryPersistenceManager(canvasChooser);
 	
 	public static Logger getLogger() {
@@ -54,43 +56,46 @@ public class SimulatorPersistenceServer {
         }
     }
 
+	@SuppressWarnings("unchecked")
 	public static void runWebserver(Socket socket) {
+		LOGGER.info("Running a new Webserver for a socket : ");
 		LOGGER.info(socket.getRemoteSocketAddress().toString());
-		if (socket.isInputShutdown()) {
-			LOGGER.severe("Input Server shutdown");
-		}
-		if (socket.isOutputShutdown()) {
-			LOGGER.severe("Output Server shutdown");
-		}
         try (
             InputStream inpStr = socket.getInputStream();
             BufferedInputStream bfin = new BufferedInputStream(inpStr);
             ObjectInputStream in = new ObjectInputStream(bfin);
-            // - read and decode input request
+
             OutputStream outStr = socket.getOutputStream();
             BufferedOutputStream bfout = new BufferedOutputStream(outStr);
             ObjectOutputStream out = new ObjectOutputStream(bfout);
-            // - build and write response
-        	) /*while(true) {*/ {
+
+        	) {
         		LOGGER.info("Waiting for a message");
-        		//LOGGER.info("Will read !!!");
+        		out.flush();
         		Object o = in.readObject();
-        		//LOGGER.info("Received object successfully !!!");
+        		LOGGER.info("Received object successfully !!!");
         		if (o instanceof String) {
         			LOGGER.info("I received : " + o.toString() + " !");
-        			fpm.read(o.toString());
-        			//out.writeObject("I received : " + o.toString() + " !");
+        			out.writeObject(fpm.read(o.toString()));
+        			out.flush();
         		} else if (o instanceof Canvas) {
         			LOGGER.info("I received : a Canvas !!!");
         			fpm.persist((Canvas) o);
         			LOGGER.info("Canvas was saved successfully !!!");
-        		} else if (o instanceof FilenameFilter) {
+        			out.writeObject(true);
+        			out.flush();
+        		} else if (o instanceof Function<?,?>) {
         			LOGGER.info("I received : a file extension !!!");
-        		    File file = new File(Paths.get(".").toString());
-        			out.writeObject(file.list((FilenameFilter) o));
+        		    File file = new File(".");
+        			out.writeObject(file.list((FilenameFilter) ((dir,name) -> ((Function<String, Boolean>) o).apply(name))));
+        			out.flush();
         		} else {
         			LOGGER.severe("No class found");
+        			throw new ClassNotFoundException("No class found");
         		}            		
+        } catch (ClassCastException ex) {
+    		LOGGER.severe("ClassCastException");
+    		LOGGER.severe(ex.toString());
         }
     	catch (EOFException ex) {
     		LOGGER.severe("EOF exception");

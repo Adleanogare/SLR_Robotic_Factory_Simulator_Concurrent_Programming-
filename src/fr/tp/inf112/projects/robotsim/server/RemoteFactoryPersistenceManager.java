@@ -26,23 +26,8 @@ public class RemoteFactoryPersistenceManager extends AbstractCanvasPersistenceMa
 	@Override
 	public Canvas read(final String canvasId)
 	throws IOException {
-		try (Socket serverSocket = new Socket();) {
-			serverSocket.connect(serverSocketAddr, 1000);
-			LOGGER.info("RFPM - read - socket connected");
-			try (
-		        final InputStream inpStr = serverSocket.getInputStream();
-				final BufferedInputStream bfin = new BufferedInputStream(inpStr);
-				final ObjectInputStream in = new ObjectInputStream(bfin);
-				//final InputStream fileInputStream = new FileInputStream(canvasId);
-			) {
-				LOGGER.info("RFPM - read - stream connected");
-				return (Canvas) in.readObject();
-			}
-			catch (ClassNotFoundException | IOException ex) {
-				LOGGER.info("RFPM - read - failS");
-				throw new IOException(ex);
-			}
-		}
+		LOGGER.info("Canvas Read");
+		return (Canvas) new HandleRequest(serverSocketAddr, LOGGER).request(canvasId);
 	}
 
 	/**
@@ -51,18 +36,11 @@ public class RemoteFactoryPersistenceManager extends AbstractCanvasPersistenceMa
 	@Override
 	public void persist(Canvas canvasModel)
 	throws IOException {
-		try (Socket serverSocket = new Socket();) {
-			serverSocket.connect(serverSocketAddr, 1000);
-			LOGGER.info("RFPM - persist - socket connected");
-			try (
-				final OutputStream outStr = serverSocket.getOutputStream();
-			    final BufferedOutputStream bfout = new BufferedOutputStream(outStr);
-			    final ObjectOutputStream out = new ObjectOutputStream(bfout);	
-				) {	
-				//final OutputStream fileOutStream = new FileOutputStream(canvasModel.getId());
-				out.writeObject(canvasModel);
-				LOGGER.info("RFPM - persist - object written in stream");
-			} 
+		LOGGER.info("Canvas Persist");
+		if ((boolean) new HandleRequest(serverSocketAddr, LOGGER).request(canvasModel)) {
+			LOGGER.info("Canvas Persist Successfull");
+		} else {
+			LOGGER.info("Canvas Persist Failed");
 		}
 	}
 

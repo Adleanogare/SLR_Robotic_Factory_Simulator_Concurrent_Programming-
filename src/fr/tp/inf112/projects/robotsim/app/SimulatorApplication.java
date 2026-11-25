@@ -42,6 +42,7 @@ public class SimulatorApplication {
 	}
 	
 	public static void main(String[] args) {
+		
 		LOGGER.info("Starting the robot simulator...");
 		
 		LOGGER.config("With parameters " + Arrays.toString(args) + ".");
@@ -96,32 +97,17 @@ public class SimulatorApplication {
 			  
 			@Override
 	        public void run() {
-				//final FileCanvasChooser canvasChooser = new FileCanvasChooser("factory", "Puck Factory");
-				//final Component factoryViewer = new CanvasViewer(new SimulatorController(factory, new FactoryPersistenceManager(canvasChooser)));
-				//canvasChooser.setViewer(factoryViewer);
 				try { 
 		            InetAddress netAddr = InetAddress.getByName("127.0.0.1");
-		            //try {
-		        		LOGGER.fine("TryInet");
-		                SocketAddress serverSocketAddr = new InetSocketAddress(netAddr, 64000);
-		                //LOGGER.fine("TrySocket");
-		                //Socket serverSocket = new Socket();
-		                //serverSocket.connect(sockAddr, 1000); // Timeout of 1000 ms
-		                //LOGGER.fine("RunClient");
-		                new Thread(() -> runClient(serverSocketAddr, factory)).start();
-		            //}
-		            //catch (IOException ex) {
-		            	//LOGGER.severe("Connection Error to the socket");
-		                //LOGGER.severe(ex.toString());
-		            //}
-		        }
-		        catch (IOException ex) {
+		        	LOGGER.fine("TryInet");
+	                SocketAddress serverSocketAddr = new InetSocketAddress(netAddr, 64000);
+	                new Thread(() -> runClient(serverSocketAddr, factory)).start();
+		        } catch (IOException ex) {
 		        	LOGGER.severe("Connection Error to the inet");
 		            LOGGER.severe(ex.toString());
 		        }
-				
-				//new CanvasViewer(factory);
 			}
+			
 		});
 	}
 	
