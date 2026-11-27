@@ -1,0 +1,276 @@
+package fr.tp.inf112.projects.robotsim.model;
+
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.concurrent.locks.Lock;
+
+import fr.tp.inf112.projects.canvas.model.Style;
+import fr.tp.inf112.projects.canvas.model.impl.RGBColor;
+import fr.tp.inf112.projects.robotsim.model.motion.Motion;
+import fr.tp.inf112.projects.robotsim.model.path.FactoryPathFinder;
+import fr.tp.inf112.projects.robotsim.model.shapes.CircularShape;
+import fr.tp.inf112.projects.robotsim.model.shapes.PositionedShape;
+import fr.tp.inf112.projects.robotsim.model.shapes.RectangularShape;
+
+public class Robot extends Component {
+	
+	private static final long serialVersionUID = -1218857231970296747L;
+
+	private static final Style STYLE = new ComponentStyle(RGBColor.GREEN, RGBColor.BLACK, 3.0f, null);
+
+	private static final Style BLOCKED_STYLE = new ComponentStyle(RGBColor.RED, RGBColor.BLACK, 3.0f, new float[]{4.0f});
+
+	private final Battery battery;
+	
+	private int speed;
+	
+	private List<Component> targetComponents;
+	
+	private transient Iterator<Component> targetComponentsIterator;
+	
+	private Component currTargetComponent;
+	
+	private transient Iterator<Position> currentPathPositionsIter;
+	
+	private transient boolean blocked;
+	
+	private Position blockedTargetPosition;
+	
+	private FactoryPathFinder pathFinder;
+
+	public Robot(final Factory factory,
+				 final FactoryPathFinder pathFinder,
+				 final CircularShape shape,
+				 final Battery battery,
+				 final String name ) {
+		super(factory, shape, name);
+		
+		this.pathFinder = pathFinder;
+		
+		this.battery = battery;
+		
+		targetComponents = new ArrayList<>();
+		currTargetComponent = null;
+		currentPathPositionsIter = null;
+		speed = 5;
+		blocked = false;
+		blockedTargetPosition = null;
+	}
+
+	@Override
+	public String toString() {
+		return super.toString() + " battery=" + battery + "]";
+	}
+
+	protected int getSpeed() {
+		return speed;
+	}
+
+	protected void setSpeed(final int speed) {
+		this.speed = speed;
+	}
+	
+	public Position getBlockedTargetPosition() {
+		return blockedTargetPosition;
+	}
+	
+	private List<Component> getTargetComponents() {
+		if (targetComponents == null) {
+			targetComponents = new ArrayList<>();
+		}
+		
+		return targetComponents;
+	}
+	
+	public boolean addTargetComponent(final Component targetComponent) {
+		return getTargetComponents().add(targetComponent);
+	}
+	
+	public boolean removeTargetComponent(final Component targetComponent) {
+		return getTargetComponents().remove(targetComponent);
+	}
+	
+	@Override
+	public boolean isMobile() {
+		return true;
+	}
+
+	@Override
+	public boolean behave() {
+		if (getTargetComponents().isEmpty()) {
+			return false;
+		}
+		
+		if (currTargetComponent == null || hasReachedCurrentTarget()) {
+			currTargetComponent = nextTargetComponentToVisit();
+			
+			computePathToCurrentTargetComponent();
+		}
+
+		return moveToNextPathPosition() != 0;
+	}
+		
+	private Component nextTargetComponentToVisit() {
+		if (targetComponentsIterator == null || !targetComponentsIterator.hasNext()) {
+			targetComponentsIterator = getTargetComponents().iterator();
+		}
+		
+		return targetComponentsIterator.hasNext() ? targetComponentsIterator.next() : null;
+	}
+	
+	private int moveToNextPathPosition() {
+		final Motion motion = computeMotion();
+		
+		int displacement = 0;
+		if (motion != null) {
+			final Lock movingLock = getFactory().getFactoryGrid().get(motion.getTargetPosition().getxCoordinate()).get(motion.getTargetPosition().getyCoordinate());
+			movingLock.lock();
+			
+			displacement = motion.moveToTarget();
+			
+			movingLock.unlock();
+			movingLock.unlock();
+		}
+				
+		if (displacement != 0) {
+			notifyObservers();
+		} else if (isLivelyLocked()) {
+			final Position freeNeighbouringPosition = findFreeNeighbouringPosition();
+		 	if (freeNeighbouringPosition != null) {
+		 		blockedTargetPosition = freeNeighbouringPosition;
+		 		displacement = moveToNextPathPosition();
+		 		computePathToCurrentTargetComponent();
+		 	}
+		}
+		
+		return displacement;
+	}
+	
+	private Position findFreeNeighbouringPosition() {
+		// For a robot find a free position to let the live lock pass.
+		// If robots are in a deadlock position, they have three position to choose from in the best case scenario.
+		// We compute each of them in the same order related to the other robots and constraint then choose the first one possible.
+		// y goes down
+		// x goes left
+		
+		ArrayList<Position> list_FNP = new ArrayList<Position>();
+		
+		//In the form of
+		final int posX = getPosition().getxCoordinate();
+		final int posY = getPosition().getyCoordinate();
+		final int deltaX = posX - blockedTargetPosition.getxCoordinate();
+		final int deltaY = posY - blockedTargetPosition.getyCoordinate();
+
+		//Start with trying to go around
+		if(deltaX != 0) {
+			final PositionedShape shape1 = new RectangularShape(posX,posY + deltaX,2,2);
+			if (!getFactory().hasObstacleAt(shape1)) {
+				list_FNP.add(new Position(posX,posY + deltaX));
+			}
+			
+			final PositionedShape shape2 = new RectangularShape(posX,posY - deltaX,2,2);
+			if (!getFactory().hasObstacleAt(shape2)) {
+				list_FNP.add(new Position(posX,posY - deltaX));
+			}
+			
+			final PositionedShape shape3 = new RectangularShape(posX + deltaX,posY,2,2);
+			if (!getFactory().hasObstacleAt(shape3)) {
+				list_FNP.add(new Position(posX+deltaX,posY));
+			}
+			//There is no use in trying to go forward
+		} else {
+			final PositionedShape shape3 = new RectangularShape(posX + deltaY,posY,2,2);
+			if (!getFactory().hasObstacleAt(shape3)) {
+				list_FNP.add(new Position(posX+deltaY,posY));
+			}
+			
+			final PositionedShape shape2 = new RectangularShape(posX - deltaY,posY,2,2);
+			if (!getFactory().hasObstacleAt(shape2)) {
+				list_FNP.add(new Position(posX-deltaY,posY));
+			}
+			
+			final PositionedShape shape1 = new RectangularShape(posX,posY + deltaY,2,2);
+			if (!getFactory().hasObstacleAt(shape1)) {
+				list_FNP.add(new Position(posX,posY + deltaY));
+			}
+			//There is no use in trying to go forward
+		}
+		
+		//list_FNP.add(null);
+		
+		return list_FNP.get(0);
+	}
+
+	private void computePathToCurrentTargetComponent() {
+		final List<Position> currentPathPositions = pathFinder.findPath(this, currTargetComponent);
+		currentPathPositionsIter = currentPathPositions.iterator();
+	}
+	
+	private Motion computeMotion() {
+		if (!currentPathPositionsIter.hasNext()) {
+
+			// There is no free path to the target
+			blocked = true;
+			
+			return null;
+		}
+		
+		final Position targetPosition = getTargetPosition();
+		final PositionedShape shape = new RectangularShape(targetPosition.getxCoordinate(),
+														   targetPosition.getyCoordinate(),
+				   										   2,
+				   										   2);
+		
+		final Lock movingLock = getFactory().getFactoryGrid().get(targetPosition.getxCoordinate()).get(targetPosition.getyCoordinate());
+		movingLock.lock();
+		
+		// If there is another robot, memorize the blocked target position for the next run
+		if (getFactory().hasMobileComponentAt(shape, this)) {
+			this.blockedTargetPosition = targetPosition;
+			movingLock.unlock();
+			return null;
+		}
+
+		// Reset the memorized position
+		this.blockedTargetPosition = null;
+			
+		return new Motion(getPosition(), targetPosition);
+	}
+	
+	private Position getTargetPosition() {
+		// If a target position was memorized, it means that the robot was blocked during the last iteration 
+		// so it waited for another robot to pass. So try to move to this memorized position otherwise move to  
+		// the next position from the path
+		return this.blockedTargetPosition == null ? currentPathPositionsIter.next() : this.blockedTargetPosition;
+	}
+	
+	public boolean isLivelyLocked() {
+	    if (blockedTargetPosition == null) {
+	        return false;
+	    }
+			
+	    final Component otherComponent = getFactory().getMobileComponentAt(blockedTargetPosition,     
+	                                                                   this);
+
+	    if (otherComponent instanceof Robot)  {
+		    return getPosition().equals(((Robot) otherComponent).getBlockedTargetPosition());
+	    }
+	    
+	    return false;
+	}
+
+	private boolean hasReachedCurrentTarget() {
+		return getPositionedShape().overlays(currTargetComponent.getPositionedShape());
+	}
+	
+	@Override
+	public boolean canBeOverlayed(final PositionedShape shape) {
+		return true;
+	}
+	
+	@Override
+	public Style getStyle() {
+		return blocked ? BLOCKED_STYLE : STYLE;
+	}
+}
