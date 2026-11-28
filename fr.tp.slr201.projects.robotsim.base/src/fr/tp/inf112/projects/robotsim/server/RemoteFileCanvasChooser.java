@@ -58,6 +58,16 @@ public class RemoteFileCanvasChooser extends FileCanvasChooser {
     	return this.serverSocketAddr;
     }
     
+    public String[] getFactories() {
+    	try {
+			return (String[]) new HandleRequest(serverSocketAddr, LOGGER).request(fileNameFilter);
+		} catch (IOException e) {
+			LOGGER.severe("Failed Request while asking for a list of factories.");
+			LOGGER.severe(e.toString());
+		}
+		return null;
+    }
+    
 	/**
 	 * {@inheritDoc}
 	 */
@@ -66,7 +76,7 @@ public class RemoteFileCanvasChooser extends FileCanvasChooser {
 	throws IOException {
 	    if (open) {
 	    	LOGGER.info("BrowseCanvas is open");
-	    	String[] selectionValues = (String[]) new HandleRequest(serverSocketAddr, LOGGER).request(fileNameFilter);
+	    	String[] selectionValues = getFactories();
 	    	LOGGER.info(Arrays.toString(selectionValues));
 		    return JOptionPane.showInputDialog(null, "Choose one", "Input", JOptionPane.INFORMATION_MESSAGE, null, selectionValues, selectionValues[0]).toString();
 

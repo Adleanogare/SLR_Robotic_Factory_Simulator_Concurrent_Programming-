@@ -7,6 +7,7 @@ import java.io.*;
 import fr.tp.inf112.projects.canvas.model.Canvas;
 import fr.tp.inf112.projects.canvas.model.impl.AbstractCanvasPersistenceManager;
 import fr.tp.inf112.projects.robotsim.app.SimulatorApplication;
+import fr.tp.inf112.projects.robotsim.model.Factory;
 
 
 public class RemoteFactoryPersistenceManager extends AbstractCanvasPersistenceManager {
@@ -27,7 +28,7 @@ public class RemoteFactoryPersistenceManager extends AbstractCanvasPersistenceMa
 	public Canvas read(final String canvasId)
 	throws IOException {
 		LOGGER.info("Canvas Read");
-		return (Canvas) new HandleRequest(serverSocketAddr, LOGGER).request(canvasId);
+		return (Factory) new HandleRequest(serverSocketAddr, LOGGER).request(canvasId);
 	}
 
 	/**
